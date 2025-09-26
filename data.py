@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 import logistic_regression.softmax_regression as softmax_regression
+from decision_tree.decisiontree import DT 
 
 # Cargar los datasets
 train_df = pd.read_csv('datos_entrenamiento_riesgo.csv')
@@ -214,6 +215,36 @@ def main():
     print(f"\nRESULTADOS ENFOQUE B:")
     analyze_results(y_test_encoded_B, y_pred_B, "Enfoque B - Eliminación")
 
+    # ===================== ÁRBOL DE DECISIÓN (tu implementación) =====================
+    print("\n" + "="*50)
+    print("ÁRBOL DE DECISIÓN - ENFOQUE A (Imputación)")
+    print("="*50)
+
+    # Árbol con Enfoque A (imputación) – sin escalar ni bias
+    tree_A = DT()
+    tree_A.fit(X_train_imputed.values, y_train_encoded_A)   # usa valores numéricos
+    y_pred_tree_A = tree_A.predict(X_test_imputed.values)
+
+    print("Resultados Árbol - Enfoque A:")
+    analyze_results(y_test_encoded_A, y_pred_tree_A, "Arbol - Enfoque A (Imputacion)")
+
+    acc_A = (y_pred_tree_A == y_test_encoded_A).mean() * 100
+    print(f"Accuracy Árbol (A): {acc_A:.2f}%")
+
+    print("\n" + "="*50)
+    print("ÁRBOL DE DECISIÓN - ENFOQUE B (Eliminación)")
+    print("="*50)
+
+    # Árbol con Enfoque B (eliminación) – sin escalar ni bias
+    tree_B = DT()
+    tree_B.fit(X_train_clean.values, y_train_encoded_B)
+    y_pred_tree_B = tree_B.predict(X_test_clean.values)
+
+    print("Resultados Árbol - Enfoque B:")
+    analyze_results(y_test_encoded_B, y_pred_tree_B, "Arbol - Enfoque B (Eliminacion)")
+
+    acc_B = (y_pred_tree_B == y_test_encoded_B).mean() * 100
+    print(f"Accuracy Árbol (B): {acc_B:.2f}%")
 
 if __name__ == '__main__':
     main()
