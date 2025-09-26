@@ -40,7 +40,8 @@ def training(x_train,y_train, epochs, alpha, x_test, y_test):
     L_Test = Loss_function(x_test, y_test, w_train)
     dw = Derivatives(x_train,y_train,w_train)
     w_train =  change_parameters(w_train, dw, alpha)
-    print("L_Train:", L_Train)
+    if i % 100 == 0:
+      print("L_Train:", L_Train)
     LossTrain.append(L_Train)
     LossTest.append(L_Test)
   return w_train,LossTrain, LossTest
@@ -62,25 +63,36 @@ def normalizar(x):
 def addBias(x):
   return np.column_stack([np.ones(x.shape[0]), x])
 
+def one_vs_all_training(X_train, y_train, X_test, y_test, epochs, alpha):
+    models = {}  
+    class_names = ['Bajo', 'Medio', 'Alto']
+    
+    for i, class_name in enumerate(class_names):
+        print(f"\n--- Entrenando modelo {class_name} vs Resto ---")
+        
+        y_binary = (y_train == i).astype(int)
+        y_test_binary = (y_test == i).astype(int)
+        
+        print(f"Distribución {class_name}: {np.sum(y_binary)}/{len(y_binary)}")
+        
+        # Entrenar modelo binario
+        w_model, loss_train, loss_test = training(
+            X_train, y_binary, epochs, alpha, X_test, y_test_binary
+        )
+        
+        models[i] = w_model
+    
+    return models
 
-def main():
-    # definimos alpha y epochs
-    alpha = 0.1
-    epochs = 2000
-
-    x_train_raw = train_df.iloc[:, :-1]
-    y_train = train_df.iloc[:, -1]
-    x_test_raw = test_df.iloc[:, :-1]
-    y_test = test_df.iloc[:, -1]
-
-    x_train_normalized = normalizar(x_train_raw)
-    x_test_normalized = normalizar(x_test_raw)
-
-    x_train = addBias(x_train_normalized)
-    x_test = addBias(x_test_normalized)
-
-    w_train, LossTrain, LossTest = training(x_train, y_train, epochs, alpha, x_test, y_test)
-    Testing(x_test, y_test, w_train)
-
-if __name__ == '__main__':
-    main()
+def predict_one_vs_all(X_test, models):
+    n_samples = X_test.shape[0]
+    n_classes = len(models)
+    
+    probabilities = np.zeros((n_samples, n_classes))
+    
+    for i, w_model in models.items():
+        probabilities[:, i] = s(X_test, w_model)  
+    
+    y_pred = np.argmax(probabilities, axis=1)
+    
+    return y_pred, probabilities
