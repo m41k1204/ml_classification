@@ -124,30 +124,26 @@ def analyze_results(y_true, y_pred, title="Matriz de Confusión"):
     cm = confusion_matrix(y_true, y_pred)
     class_names = ['Bajo', 'Medio', 'Alto']
     
-    plt.figure(figsize=(8, 6))
-    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', 
-                xticklabels=class_names, yticklabels=class_names,
-                cbar_kws={'label': 'Número de muestras'})
+    cm_decimal = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+    
+    plt.figure(figsize=(6, 4))
+    sns.heatmap(cm_decimal, annot=True, fmt='.3f', cmap='Blues', 
+                xticklabels=class_names, yticklabels=class_names, cbar=False)
     
     plt.title(title)
-    
     plt.tight_layout()
-    plt.savefig(f'{title.replace(" ", "_").replace("-", "_")}.png', dpi=300, bbox_inches='tight')
+    filename = f'{title.replace(" ", "_").replace("-", "_")}_decimal.png'
+    plt.savefig(filename, dpi=300, bbox_inches='tight')
     plt.close()  
-    print(f"Gráfico guardado como: {title.replace(' ', '_').replace('-', '_')}.png")
+    print(f"Gráfico guardado como: {filename}")
     
-    print(f"\nReporte detallado:")
-    print(classification_report(y_true, y_pred, target_names=class_names))
-    
-    return cm
-
 def compute_accuracy(y_true, y_pred):
     return np.mean(y_true == y_pred) * 100
 
 def main():
     # definimos alpha y epochs
-    alpha = 0.1
-    epochs = 2000
+    alpha = 0.9
+    epochs = 10000
 
     # ENFOQUE A - Imputación
     print("="*50)
@@ -203,7 +199,7 @@ def main():
     y_pred_A, accuracy_A = softmax_regression.test(X_test_bias_A, y_test_encoded_A, W_A)
     
     print(f"\nRESULTADOS ENFOQUE A:")
-    analyze_results(y_test_encoded_A, y_pred_A, "Enfoque A - Imputación")
+    analyze_results(y_test_encoded_A, y_pred_A, "Softmax Regression without PCA A")
 
     W_B, LossTrain_B, LossTest_B = softmax_regression.train(
         X_train_bias_B, y_train_encoded_B, epochs, alpha, X_test_bias_B, y_test_encoded_B
@@ -212,7 +208,7 @@ def main():
     y_pred_B, accuracy_B = softmax_regression.test(X_test_bias_B, y_test_encoded_B, W_B)
     
     print(f"\nRESULTADOS ENFOQUE B:")
-    analyze_results(y_test_encoded_B, y_pred_B, "Enfoque B - Eliminación")
+    analyze_results(y_test_encoded_B, y_pred_B, "Softmax Regression without PCA B")
 
 
 if __name__ == '__main__':
