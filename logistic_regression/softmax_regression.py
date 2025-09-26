@@ -1,106 +1,71 @@
 import numpy as np
 
-
 def initialize_weights(n_features, n_classes):
-    """
-    Inicializa la matriz de pesos W
-    n_features: int - número de características (incluye bias)
-    n_classes: int - número de clases (3 en tu caso: Bajo=0, Medio=1, Alto=2)
-    Returns: W [n_features, n_classes] - matriz de pesos inicializada
-    
-    CAMBIO vs binario:
-    - Antes: w = np.ones(n_features) -> vector
-    - Ahora: W = inicialización -> matriz [n_features, n_classes]
-    """
-    pass
-
+    np.random.seed(42)  
+    return np.random.randn(n_features, n_classes) * 0.01
 def h(x, w):
     return np.dot(x, w)
-def s(X, W):
-    """
-    Calcula la función softmax (equivalente a sigmoide en multiclase)
-    X: [n_samples, n_features] - matriz de características
-    W: [n_features, n_classes] - matriz de pesos
-    Returns: probabilidades [n_samples, n_classes] que suman 1 por fila
-    
-    CAMBIO vs binario:
-    - Antes: 1/(1 + exp(-h(x,w))) -> una probabilidad
-    - Ahora: softmax(h(X,W)) -> K probabilidades
-    """
-    pass
 
-def Loss_function(X, y, W):
-    """
-    Calcula la función de pérdida cross-entropy categórica
-    X: [n_samples, n_features] - matriz de características
-    y: [n_samples] - etiquetas verdaderas (0, 1, 2)
-    W: [n_features, n_classes] - matriz de pesos
-    Returns: scalar - pérdida promedio
-    
-    CAMBIO vs binario:
-    - Antes: log-likelihood binario
-    - Ahora: cross-entropy categórica con indicador 1{y=k}
-    """
-    pass
+def s(x, w):
+    exp_scores = np.exp(h(x, w))
+    return exp_scores / np.sum(exp_scores, axis=1, keepdims=True)
 
-def Derivatives(X, y, W):
-    """
-    Calcula los gradientes de la función de pérdida con respecto a W
-    X: [n_samples, n_features] - matriz de características
-    y: [n_samples] - etiquetas verdaderas (0, 1, 2)
-    W: [n_features, n_classes] - matriz de pesos
-    Returns: gradients [n_features, n_classes] - gradientes de W
-    
-    CAMBIO vs binario:
-    - Antes: gradiente vectorial
-    - Ahora: gradiente matricial usando softmax
-    """
-    pass
+def Loss_function(x, y, w):
+    probabilities = s(x, w)  
+    n_samples = x.shape[0]
+    correct_class_probs = probabilities[np.arange(n_samples), y]
+    epsilon = 1e-15  
+    return -np.mean(np.log(correct_class_probs + epsilon))
 
-def change_parameters(W, derivatives, alpha):
-    """
-    Actualiza los pesos usando un paso de gradiente descendente
-    W: [n_features, n_classes] - matriz de pesos actual
-    derivatives: [n_features, n_classes] - gradientes calculados
-    alpha: float - tasa de aprendizaje
-    Returns: W_new [n_features, n_classes] - pesos actualizados
+def Derivatives(x, y, w):
+    n_samples = x.shape[0]
+    probabilities = s(x, w)
     
-    CAMBIO vs binario:
-    - Antes: w - alpha * derivatives (vectores)
-    - Ahora: W - alpha * derivatives (matrices)
-    - MISMA LÓGICA, diferentes dimensiones
-    """
-    pass
+    probabilities[np.arange(n_samples), y] -= 1
+    
+    gradients = (1/n_samples) * np.dot(x.T, probabilities)
+    return gradients
 
-def training(X_train, y_train, epochs, alpha, X_test, y_test):
-    """
-    Función principal de entrenamiento del modelo softmax
-    X_train: [n_samples, n_features] - datos de entrenamiento
-    y_train: [n_samples] - etiquetas de entrenamiento (0, 1, 2)
-    epochs: int - número de épocas
-    alpha: float - tasa de aprendizaje
-    X_test, y_test: datos de validación
-    Returns: 
-        - W [n_features, n_classes] - pesos finales
-        - LossTrain, LossTest - historial de pérdidas
-    
-    CAMBIO vs binario:
-    - MISMA ESTRUCTURA del loop
-    - Inicialización: W = initialize_weights() en lugar de w = np.ones()
-    - Llama las mismas funciones con parámetros diferentes
-    """
-    pass
+def change_parameters(w, derivatives, alpha):
+  return w - alpha * derivatives
 
-def Testing(X_test, y_test, W):
-    """
-    Evalúa el modelo en datos de prueba
-    X_test: [n_samples, n_features] - datos de prueba
-    y_test: [n_samples] - etiquetas verdaderas
-    W: [n_features, n_classes] - pesos entrenados
+def train(x_train, y_train, epochs, alpha, x_test, y_test):
+    print(f"Número de muestras de entrenamiento: {len(x_train)}")
     
-    CAMBIO vs binario:
-    - Antes: np.round(s(x,w)) para 0/1
-    - Ahora: np.argmax(s(X,W), axis=1) para 0/1/2
-    - MISMA LÓGICA de evaluación
-    """
-    pass
+    n_features = x_train.shape[1]
+    n_classes = len(np.unique(y_train))  
+    w_train = initialize_weights(n_features, n_classes)
+    
+    LossTrain = []
+    LossTest = []
+    
+    for i in range(epochs):
+        L_Train = Loss_function(x_train, y_train, w_train)
+        L_Test = Loss_function(x_test, y_test, w_train)
+        
+        dW = Derivatives(x_train, y_train, w_train)
+        w_train = change_parameters(w_train, dW, alpha)
+        
+        if i %100 == 0:
+            print(f"Época {i+1}: L_Train = {L_Train:.4f}")
+        
+        LossTrain.append(L_Train)
+        LossTest.append(L_Test)
+    
+    return w_train, LossTrain, LossTest
+
+def test(x_test, y_test, w_train):
+    
+    y_pred_probs = s(x_test, w_train)
+    y_pred = np.argmax(y_pred_probs, axis=1)
+    
+    correctos = np.sum(y_pred == y_test)
+    total = len(y_test)
+    porc_aciertos = (correctos / total) * 100
+    
+    print(f"Número de datos correctos: {correctos}")
+    print(f"Porcentaje de aciertos: {porc_aciertos:.2f}%")
+    print(f"Porcentaje de error: {100 - porc_aciertos:.2f}%")
+    
+    return y_pred, porc_aciertos
+
