@@ -7,6 +7,8 @@ import seaborn as sns
 
 import logistic_regression.softmax_regression as softmax_regression
 from decision_tree.decisiontree import DT 
+import logistic_regression.logistic_regression as logistic_regression
+
 
 # Cargar los datasets
 train_df = pd.read_csv('datos_entrenamiento_riesgo.csv')
@@ -125,35 +127,26 @@ def analyze_results(y_true, y_pred, title="Matriz de Confusión"):
     cm = confusion_matrix(y_true, y_pred)
     class_names = ['Bajo', 'Medio', 'Alto']
     
-    plt.figure(figsize=(8, 6))
-    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', 
-                xticklabels=class_names, yticklabels=class_names,
-                cbar_kws={'label': 'Número de muestras'})
+    cm_decimal = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+    
+    plt.figure(figsize=(6, 4))
+    sns.heatmap(cm_decimal, annot=True, fmt='.3f', cmap='Blues', 
+                xticklabels=class_names, yticklabels=class_names, cbar=False)
     
     plt.title(title)
-    
     plt.tight_layout()
-    plt.savefig(f'{title.replace(" ", "_").replace("-", "_")}.png', dpi=300, bbox_inches='tight')
+    filename = f'{title.replace(" ", "_").replace("-", "_")}_decimal.png'
+    plt.savefig(filename, dpi=300, bbox_inches='tight')
     plt.close()  
-    print(f"Gráfico guardado como: {title.replace(' ', '_').replace('-', '_')}.png")
+    print(f"Gráfico guardado como: {filename}")
     
-    print(f"\nReporte detallado:")
-    print(classification_report(y_true, y_pred, target_names=class_names))
-    
-    return cm
-
 def compute_accuracy(y_true, y_pred):
     return np.mean(y_true == y_pred) * 100
 
 def main():
     # definimos alpha y epochs
-    alpha = 0.1
-    epochs = 2000
-
-    # ENFOQUE A - Imputación
-    print("="*50)
-    print("PROBANDO ENFOQUE A - IMPUTACIÓN")
-    print("="*50)
+    alpha = 0.9
+    epochs = 10000
     
     # Preparar datasets con imputación
     train_imputed, test_imputed = impute_variables(train_df.copy(), test_df.copy())
@@ -174,27 +167,6 @@ def main():
     # Convertir etiquetas
     y_train_encoded_A = encode_labels(y_train_imputed)
     y_test_encoded_A = encode_labels(y_test_imputed)
-    
-    # ENFOQUE B - Eliminación de filas
-    print("\n" + "="*50)
-    print("PROBANDO ENFOQUE B - ELIMINACIÓN")
-    print("="*50)
-    
-    train_clean, test_clean = delete_nan_columns(train_df.copy(), test_df.copy())
-    
-    # Preparar datasets B
-    X_train_clean = train_clean.drop('nivel_riesgo', axis=1)
-    X_test_clean = test_clean.drop('nivel_riesgo', axis=1)
-    y_train_clean = train_clean['nivel_riesgo']
-    y_test_clean = test_clean['nivel_riesgo']
-    
-    X_train_norm_B, X_test_norm_B = normalize(X_train_clean, X_test_clean)
-    X_train_bias_B = add_bias(X_train_norm_B)
-    X_test_bias_B = add_bias(X_test_norm_B)
-    
-    y_train_encoded_B = encode_labels(y_train_clean)
-    y_test_encoded_B = encode_labels(y_test_clean)
-
 
     print("---------------------------- Comenzando entrenamiento ----------------------------")
     W_A, LossTrain_A, LossTest_A = softmax_regression.train(
@@ -204,14 +176,31 @@ def main():
     y_pred_A, accuracy_A = softmax_regression.test(X_test_bias_A, y_test_encoded_A, W_A)
     
     print(f"\nRESULTADOS ENFOQUE A:")
-    analyze_results(y_test_encoded_A, y_pred_A, "Enfoque A - Imputación")
+    analyze_results(y_test_encoded_A, y_pred_A, "Softmax Regression without PCA A")
 
-    W_B, LossTrain_B, LossTest_B = softmax_regression.train(
-        X_train_bias_B, y_train_encoded_B, epochs, alpha, X_test_bias_B, y_test_encoded_B
+    print("\n" + "="*50)
+    print("PROBANDO ONE-VS-ALL LOGISTIC REGRESSION")
+    print("="*50)
+    
+    # Entrenar modelos OvA
+    models_ova = logistic_regression.one_vs_all_training(
+        X_train_bias_A, y_train_encoded_A, 
+        X_test_bias_A, y_test_encoded_A, 
+        epochs, alpha
     )
     
-    y_pred_B, accuracy_B = softmax_regression.test(X_test_bias_B, y_test_encoded_B, W_B)
+    # Hacer predicciones
+    y_pred_ova, probs_ova = logistic_regression.predict_one_vs_all(X_test_bias_A, models_ova)
     
+    # Analizar resultados
+    accuracy_ova = compute_accuracy(y_test_encoded_A, y_pred_ova)
+    print(f"\nAccuracy One-vs-All: {accuracy_ova:.2f}%")
+    
+    analyze_results(y_test_encoded_A, y_pred_ova, "One-vs-All Logistic Regression")
+
+
+
+
     print(f"\nRESULTADOS ENFOQUE B:")
     analyze_results(y_test_encoded_B, y_pred_B, "Enfoque B - Eliminación")
 
@@ -245,6 +234,7 @@ def main():
 
     acc_B = (y_pred_tree_B == y_test_encoded_B).mean() * 100
     print(f"Accuracy Árbol (B): {acc_B:.2f}%")
+
 
 if __name__ == '__main__':
     main()
