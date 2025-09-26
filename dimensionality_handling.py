@@ -7,6 +7,8 @@ import seaborn as sns
 
 import logistic_regression.softmax_regression as softmax_regression
 import logistic_regression.logistic_regression as logistic_regression
+from dimensionality_handling import impute_variables, delete_nan_columns, encode_labels, analyze_results
+
 
 
 # Cargar los datasets

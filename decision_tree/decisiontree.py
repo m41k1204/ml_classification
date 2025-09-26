@@ -111,6 +111,9 @@ class DT:
         j, t = split
         node.feature_index, node.threshold = j, t
 
+        print(f"{'  '*depth}Nodo (depth={depth}) -> Feature {j}, Threshold {t:.4f}, n={len(Y)}")
+
+
         left_mask  = X[:, j] <= t
         right_mask = ~left_mask
 

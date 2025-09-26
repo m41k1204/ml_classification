@@ -338,7 +338,7 @@ def main():
     # Convertir etiquetas
     y_train_encoded_A = encode_labels(y_train_imputed)
     y_test_encoded_A = encode_labels(y_test_imputed)
-    """
+    
     print("---------------------------- Comenzando entrenamiento ----------------------------")
     W_A, LossTrain_A, LossTest_A = softmax_regression.train(
         X_train_bias_A, y_train_encoded_A, epochs, alpha, X_test_bias_A, y_test_encoded_A
@@ -382,74 +382,78 @@ def main():
 
     print(f"\nRESULTADOS ENFOQUE B:")
     analyze_results(y_test_encoded_B, y_pred_B, "Enfoque B - Eliminación")
-    """
-
-    # ==== Enfoque A (imputación) ====
+    
+    # ========================= Enfoque A: Imputación =========================
     print("\n" + "="*50)
     print("ÁRBOL DE DECISIÓN - ENFOQUE A (Imputación)")
     print("="*50)
+    train_A, test_A = impute_variables(train_df.copy(), test_df.copy())
+
+    X_train_A = train_A.drop(columns=['nivel_riesgo']).values
+    X_test_A  = test_A.drop(columns=['nivel_riesgo']).values
+    y_train_A = encode_labels(train_A['nivel_riesgo'])
+    y_test_A  = encode_labels(test_A['nivel_riesgo'])
 
     # Gini
     tree_A_g = DT(criterion="gini")
-    tree_A_g.fit(X_train_imputed.values, y_train_encoded_A)
-    y_pred_A_g = tree_A_g.predict(X_test_imputed.values)
-    print("Resultados Árbol - Enfoque A (Gini):")
-    analyze_results(y_test_encoded_A, y_pred_A_g, "Árbol A (Gini)")
-    acc_A_g = (y_pred_A_g == y_test_encoded_A).mean() * 100
+    tree_A_g.fit(X_train_A, y_train_A)
+    y_pred_A_g = tree_A_g.predict(X_test_A)
+    acc_A_g = (y_pred_A_g == y_test_A).mean() * 100
     print(f"Accuracy Árbol A (Gini): {acc_A_g:.2f}%")
+    analyze_results(y_test_A, y_pred_A_g, "Árbol_A_(Gini)")
 
     # Entropía
     tree_A_e = DT(criterion="entropy")
-    tree_A_e.fit(X_train_imputed.values, y_train_encoded_A)
-    y_pred_A_e = tree_A_e.predict(X_test_imputed.values)
-    print("Resultados Árbol - Enfoque A (Entropía):")
-    analyze_results(y_test_encoded_A, y_pred_A_e, "Árbol A (Entropía)")
-    acc_A_e = (y_pred_A_e == y_test_encoded_A).mean() * 100
+    tree_A_e.fit(X_train_A, y_train_A)
+    y_pred_A_e = tree_A_e.predict(X_test_A)
+    acc_A_e = (y_pred_A_e == y_test_A).mean() * 100
     print(f"Accuracy Árbol A (Entropía): {acc_A_e:.2f}%")
+    analyze_results(y_test_A, y_pred_A_e, "Árbol_A_(Entropía)")
 
-    # ==== Enfoque B (eliminación) ====
+    # ======================= Enfoque B: Eliminación ==========================
     print("\n" + "="*50)
     print("ÁRBOL DE DECISIÓN - ENFOQUE B (Eliminación)")
     print("="*50)
+    train_B, test_B = delete_nan_columns(train_df.copy(), test_df.copy())
+
+    X_train_B = train_B.drop(columns=['nivel_riesgo']).values
+    X_test_B  = test_B.drop(columns=['nivel_riesgo']).values
+    y_train_B = encode_labels(train_B['nivel_riesgo'])
+    y_test_B  = encode_labels(test_B['nivel_riesgo'])
 
     # Gini
     tree_B_g = DT(criterion="gini")
-    tree_B_g.fit(X_train_clean.values, y_train_encoded_B)
-    y_pred_B_g = tree_B_g.predict(X_test_clean.values)
-    print("Resultados Árbol - Enfoque B (Gini):")
-    analyze_results(y_test_encoded_B, y_pred_B_g, "Árbol B (Gini)")
-    acc_B_g = (y_pred_B_g == y_test_encoded_B).mean() * 100
+    tree_B_g.fit(X_train_B, y_train_B){}
+    y_pred_B_g = tree_B_g.predict(X_test_B)
+    acc_B_g = float((y_pred_B_g == y_test_B).mean() * 100)
     print(f"Accuracy Árbol B (Gini): {acc_B_g:.2f}%")
+    analyze_results(y_test_B, y_pred_B_g, "Árbol_B_(Gini)")
 
     # Entropía
     tree_B_e = DT(criterion="entropy")
-    tree_B_e.fit(X_train_clean.values, y_train_encoded_B)
-    y_pred_B_e = tree_B_e.predict(X_test_clean.values)
-    print("Resultados Árbol - Enfoque B (Entropía):")
-    analyze_results(y_test_encoded_B, y_pred_B_e, "Árbol B (Entropía)")
-    acc_B_e = (y_pred_B_e == y_test_encoded_B).mean() * 100
+    tree_B_e.fit(X_train_B, y_train_B)
+    y_pred_B_e = tree_B_e.predict(X_test_B)
+    acc_B_e = (y_pred_B_e == y_test_B).mean() * 100
     print(f"Accuracy Árbol B (Entropía): {acc_B_e:.2f}%")
+    analyze_results(y_test_B, y_pred_B_e, "Árbol_B_(Entropía)")
 
-    # ==== Plot comparativo (accuracies) ====
-    labels = ["A - Gini", "A - Entropía", "B - Gini", "B - Entropía"]
+    # ======================= Comparación rápida ==============================
+    labels = ["A-Gini", "A-Entropía", "B-Gini", "B-Entropía"]
     values = [acc_A_g, acc_A_e, acc_B_g, acc_B_e]
 
     plt.figure(figsize=(8,4.5))
     bars = plt.bar(labels, values)
     plt.ylim(0, 100)
     plt.ylabel("Accuracy (%)")
-    plt.title("Comparación de criterio: Gini vs. Entropía (Enfoques A y B)")
-
-    # Etiquetas encima de cada barra
+    plt.title("Árbol de Decisión: Gini vs Entropía (Enfoques A y B)")
     for b, v in zip(bars, values):
-        plt.text(b.get_x() + b.get_width()/2, v + 1, f"{v:.2f}%", ha="center", va="bottom")
-
-    # Guardado opcional en subcarpeta decision_tree/
-    out_dir = Path("decision_tree")
-    out_dir.mkdir(parents=True, exist_ok=True)
+        plt.text(b.get_x() + b.get_width()/2, v + 1, f"{v:.2f}%",
+                 ha="center", va="bottom")
+    out = Path("decision_tree") / "Comparacion_Gini_vs_Entropia_AyB.png"
     plt.tight_layout()
-    plt.savefig(out_dir / "Comparacion_Gini_vs_Entropia_AyB.png", dpi=200, bbox_inches="tight")
+    plt.savefig(out, dpi=200, bbox_inches="tight")
     plt.show()
+    print(f"Guardado: {out}")
 
 
 if __name__ == '__main__':
