@@ -226,11 +226,7 @@ def bivariate_analysis(df, title="Análisis Bivariado"):
     )
     plt.title(f"{title} - Matriz de Correlación", fontsize=22)
     plt.tight_layout()
-    plt.savefig(
-        f'{title.replace(" ", "_")}_correlaciones.png', dpi=300, bbox_inches="tight"
-    )
-    plt.close()
-
+    plt.show()
     # Identificar correlaciones altas (>0.8)
     high_corr = np.where(np.abs(correlation_matrix) > 0.8)
     high_corr_pairs = [
