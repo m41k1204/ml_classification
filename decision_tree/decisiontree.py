@@ -82,13 +82,16 @@ class Nodo:
 
 
 class DT:
-    def __init__(self, criterion="gini"):
+    def __init__(self, criterion="gini", max_depth=None, min_samples_split=2, min_samples_leaf=1):
         self.root = None
+        self.max_depth = max_depth
+        self.min_samples_split = min_samples_split
+        self.min_samples_leaf = min_samples_leaf
+
         if criterion == "gini":
             self.impurity_fn = Nodo.gini_from_counts
         elif criterion == "entropy":
             self.impurity_fn = Nodo.entropy_from_counts
-
         else:
             raise ValueError("criterion debe ser 'gini' o 'entropy'")
 
@@ -98,11 +101,15 @@ class DT:
     def _grow(self, X, Y, depth):
         node = Nodo(X, Y)
 
-        if (node.is_terminal()):
+        
+        if (
+            node.is_terminal() or
+            (self.max_depth is not None and depth >= self.max_depth) or
+            (len(Y) < self.min_samples_split)
+        ):
             node.label = Counter(Y).most_common(1)[0][0] if len(Y) else None
             return node
 
-        # pasa la función de impureza elegida
         split = node.best_split(impurity_fn=self.impurity_fn)
         if split is None:
             node.label = Counter(Y).most_common(1)[0][0]
@@ -111,15 +118,19 @@ class DT:
         j, t = split
         node.feature_index, node.threshold = j, t
 
-        print(f"{'  '*depth}Nodo (depth={depth}) -> Feature {j}, Threshold {t:.4f}, n={len(Y)}")
-
-
         left_mask  = X[:, j] <= t
         right_mask = ~left_mask
 
+      
+        if (sum(left_mask) < self.min_samples_leaf) or (sum(right_mask) < self.min_samples_leaf):
+            node.label = Counter(Y).most_common(1)[0][0]
+            return node
+
+        
         node.left  = self._grow(X[left_mask],  Y[left_mask],  depth + 1)
         node.right = self._grow(X[right_mask], Y[right_mask], depth + 1)
         return node
+
 
 
     def _predict_one(self, node, x):
