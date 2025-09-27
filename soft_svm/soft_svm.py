@@ -83,6 +83,18 @@ def predict(score1, score2, score3):
 def score(X, W, b):
     return X @ W + b / np.linalg.norm(W)
 
+from sklearn.feature_selection import mutual_info_classif
+
+def information_gain_selection(X_train, y_train, X_test, k):
+    mi_scores = mutual_info_classif(X_train, y_train, random_state=42)
+    
+    top_k_indices = np.argsort(mi_scores)[-k:]
+    
+    X_train_selected = X_train[:, top_k_indices]
+    X_test_selected = X_test[:, top_k_indices]
+    
+    return X_train_selected, X_test_selected, top_k_indices
+
 def test():
     # Cargar los datasets
     train_df = pd.read_csv('../datos_entrenamiento_riesgo.csv')
@@ -98,6 +110,8 @@ def test():
 
     x_train, x_test = normalize(x_train, x_test)
 
+    x_train, x_test, _ = information_gain_selection(x_train, y_train, x_test, 25)
+
     y_train = encode_labels(y_train)
     y_test = encode_labels(y_test)
     
@@ -105,6 +119,7 @@ def test():
     class_weights = [len(y_train) / (3 * counts[i]) for i in range(3)]
 
     class_weights[1] = class_weights[1] * 0.16
+    class_weights[2] = class_weights[2] * 1.05
 
     W1, b1, loss1, W2, b2, loss2, W3, b3, loss3 = train_one_vs_rest(x_train, y_train, 0.000001, 39, class_weights, 500)
     score1 = score(x_test, W1, b1)
